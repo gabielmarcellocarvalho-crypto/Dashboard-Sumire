@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sumirê · Dashboard de Métricas Orgânicas</title>
+<link rel="icon" href="https://sumire.fbitsstatic.net/sf/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* ---- Superfícies (dark, canvas warm-plum) ---- */
+  --bg:#141019;
+  --bg-deep:#0F0B15;
+  --surface:#1C1725;
+  --surface-2:#241E30;
+  --surface-3:#2C2539;
+  --line:rgba(255,255,255,.07);
+  --line-2:rgba(255,255,255,.12);
+  --line-3:rgba(255,255,255,.18);
+
+  /* ---- Tinta ---- */
+  --text:#F6F4FA;
+  --text-2:#B7B1C4;
+  --muted:#847D95;
+
+  /* ---- Marca (INFERIDA — em validação) ---- */
+  --pink:#FF1476;
+  --pink-2:#FF4A9C;
+  --pink-soft:rgba(255,20,118,.14);
+  --pink-soft-2:rgba(255,20,118,.24);
+  --pink-glow:rgba(255,20,118,.35);
+
+  /* ---- Paleta categórica de dados (validada CVD/contraste em dark) ---- */
+  --c-ig:#EC2E82;        /* Instagram */
+  --c-tt:#159AA8;        /* TikTok */
+  --c-3:#7E68D8;         /* slot 3 — Exclusivos IG (donut) */
+  --c-4:#B8830F;         /* slot 4 — Exclusivos TikTok (donut) */
+  --c-ig-soft:rgba(236,46,130,.14);
+  --c-tt-soft:rgba(21,154,168,.16);
+
+  /* ---- Status ---- */
+  --up:#34D399;
+  --up-soft:rgba(52,211,153,.14);
+  --down:#FB7185;
+  --down-soft:rgba(251,113,133,.14);
+
+  --radius:18px;
+  --radius-sm:12px;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 32px rgba(0,0,0,.28);
+  --sidebar-w:250px;
+  font-family:'Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:
+    radial-gradient(1100px 520px at 78% -8%, rgba(255,20,118,.10), transparent 60%),
+    radial-gradient(900px 480px at 6% 4%, rgba(126,104,216,.10), transparent 55%),
+    var(--bg);
+  color:var(--text);font-size:14px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;min-height:100vh;
+}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+::-webkit-scrollbar{height:9px;width:9px}
+::-webkit-scrollbar-thumb{background:#39324a;border-radius:9px}
+::-webkit-scrollbar-track{background:transparent}
+:focus-visible{outline:2px solid var(--pink-2);outline-offset:2px;border-radius:8px}
+.tnum{font-variant-numeric:tabular-nums}
+
+/* ================= LAYOUT ================= */
+.app{display:flex;min-height:100vh}
+
+/* ---- Sidebar ---- */
+.sidebar{
+  position:fixed;inset:0 auto 0 0;width:var(--sidebar-w);
+  background:linear-gradient(180deg,var(--bg-deep),#120E1A);
+  border-right:1px solid var(--line);
+  display:flex;flex-direction:column;z-index:50;
+  transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
+  padding:20px 14px;overflow-y:auto;
+}
+.sidebar.open{transform:none}
+.brand{display:flex;align-items:center;gap:11px;padding:6px 8px 4px}
+.brand-mark{
+  width:38px;height:38px;border-radius:11px;flex:0 0 38px;
+  background:linear-gradient(135deg,var(--pink),#ff62ab);
+  display:grid;place-items:center;color:#fff;font-weight:800;font-size:19px;
+  box-shadow:0 6px 18px var(--pink-glow);letter-spacing:-.02em;
+}
+.brand-txt b{display:block;font-size:15px;font-weight:700;letter-spacing:-.01em;line-height:1.1}
+.brand-txt small{font-size:11px;color:var(--muted);font-weight:500}
+.brand-logo{height:26px;width:auto;display:block;margin-top:2px}
+
+.nav{margin-top:14px;display:flex;flex-direction:column;gap:2px}
+.nav-label{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:16px 12px 6px}
+.nav-item{
+  display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:11px;min-height:44px;
+  color:var(--text-2);font-weight:500;font-size:13.5px;transition:.16s;position:relative;border:1px solid transparent;
+}
+.nav-item svg{width:18px;height:18px;flex:0 0 18px;stroke:currentColor;fill:none;stroke-width:1.7}
+.nav-item:hover{background:var(--surface);color:var(--text)}
+.nav-item.active{background:var(--pink-soft);color:#ff8bbd;font-weight:600;border-color:var(--pink-soft-2)}
+.nav-item.active::before{content:"";position:absolute;left:-14px;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--pink)}
+.acct-dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+.nav-item .grow{flex:1}
+.nav-tag{font-size:9.5px;font-weight:700;letter-spacing:.03em;padding:2px 6px;border-radius:6px;text-transform:uppercase}
+.nav-tag.real{color:var(--up);background:var(--up-soft)}
+.nav-tag.demo{color:var(--c-4);background:rgba(184,131,15,.16)}
+
+.sidebar-foot{margin-top:auto;padding:14px 8px 4px;border-top:1px solid var(--line);display:flex;align-items:center;gap:11px}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#7E68D8,#a58ff0);display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px;flex:0 0 36px}
+.sidebar-foot b{font-weight:600;font-size:13px;display:block}
+.sidebar-foot small{display:block;color:var(--muted);font-size:11px}
+
+/* ---- Main ---- */
+.main{flex:1;min-width:0;transition:margin .28s}
+
+.topbar{
+  position:sticky;top:0;z-index:40;
+  background:rgba(20,16,25,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);padding:13px 22px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+}
+.hamburger{background:var(--surface);border:1px solid var(--line-2);border-radius:11px;width:42px;height:42px;display:grid;place-items:center}
+.hamburger svg{width:20px;height:20px;stroke:var(--text);fill:none;stroke-width:2}
+.page-title h1{font-size:19px;font-weight:700;letter-spacing:-.015em}
+.page-title p{font-size:12.5px;color:var(--muted);margin-top:1px}
+.filters{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.filter{
+  display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line-2);
+  border-radius:11px;padding:9px 13px;font-size:12.5px;font-weight:500;color:var(--text-2);min-height:40px;transition:.15s;
+}
+.filter:hover{border-color:var(--line-3);color:var(--text)}
+.filter svg{width:15px;height:15px;stroke:var(--muted);fill:none;stroke-width:1.8}
+.filter.primary{background:linear-gradient(135deg,var(--pink),#ff54a2);border-color:transparent;color:#fff;box-shadow:0 6px 16px var(--pink-glow)}
+.filter.primary svg{stroke:#fff}
+.filter .chev{width:13px;height:13px;opacity:.7}
+
+.content{padding:24px 22px 40px;max-width:1560px;margin:0 auto}
+
+/* ---- Banner de contexto ---- */
+.notice{
+  display:flex;align-items:flex-start;gap:12px;background:var(--surface);border:1px solid var(--line-2);
+  border-left:3px solid var(--pink);border-radius:14px;padding:13px 16px;margin-bottom:22px;font-size:12.5px;color:var(--text-2);
+}
+.notice svg{width:17px;height:17px;stroke:var(--pink);fill:none;stroke-width:1.8;flex:0 0 17px;margin-top:1px}
+.notice b{color:var(--text);font-weight:600}
+
+.section-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:30px 2px 15px;flex-wrap:wrap}
+.section-head:first-of-type{margin-top:4px}
+.section-head h2{font-size:15.5px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
+.section-head h2 .tick{width:4px;height:15px;border-radius:3px;background:var(--pink)}
+.section-head .hint{font-size:12px;color:var(--muted)}
+
+/* ---- Cards base ---- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+
+/* ---- KPI ---- */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:14px}
+.kpi{padding:17px 17px 14px;display:flex;flex-direction:column;gap:9px;position:relative;overflow:hidden}
+.kpi-top{display:flex;align-items:center;justify-content:space-between}
+.kpi-icn{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--pink-soft)}
+.kpi-icn svg{width:18px;height:18px;stroke:var(--pink);fill:none;stroke-width:1.8}
+.kpi-icn.teal{background:var(--c-tt-soft)}.kpi-icn.teal svg{stroke:var(--c-tt)}
+.kpi-icn.violet{background:rgba(126,104,216,.16)}.kpi-icn.violet svg{stroke:#9d8bea}
+.kpi-icn.amber{background:rgba(184,131,15,.16)}.kpi-icn.amber svg{stroke:#d9a53a}
+.delta{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:20px}
+.delta.up{color:var(--up);background:var(--up-soft)}
+.delta.down{color:var(--down);background:var(--down-soft)}
+.delta svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.6}
+.kpi-label{font-size:12.5px;color:var(--text-2);font-weight:500}
+.kpi-value{font-size:28px;font-weight:700;letter-spacing:-.025em;line-height:1.05}
+.kpi-sub{font-size:11.5px;color:var(--muted);display:flex;gap:13px;flex-wrap:wrap}
+.kpi-sub b{color:var(--text)}
+.kpi-spark{margin-top:auto}
+
+/* ---- Panels / grids ---- */
+.grid-2{display:grid;grid-template-columns:1.55fr 1fr;gap:14px}
+.grid-2b{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.panel{padding:20px}
+.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}
+.panel-head h3{font-size:14.5px;font-weight:600;letter-spacing:-.01em}
+.panel-head p{font-size:12px;color:var(--muted);margin-top:2px}
+.badge{font-size:10px;font-weight:700;letter-spacing:.04em;padding:3px 8px;border-radius:7px;text-transform:uppercase;white-space:nowrap}
+.badge.real{color:var(--up);background:var(--up-soft);border:1px solid rgba(52,211,153,.28)}
+.badge.demo{color:#d9a53a;background:rgba(184,131,15,.14);border:1px solid rgba(184,131,15,.3)}
+.badge.est{color:var(--text-2);background:var(--surface-2);border:1px solid var(--line-2)}
+
+.legend{display:flex;gap:16px;margin:12px 0 2px;flex-wrap:wrap}
+.legend b{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:500;color:var(--text-2)}
+.legend .swatch{width:11px;height:11px;border-radius:4px;flex:0 0 11px}
+.legend .swatch.line{width:16px;height:3px;border-radius:2px}
+
+.chart-wrap{width:100%;overflow-x:auto;margin-top:8px}
+svg.chart{display:block;width:100%;height:auto;min-width:440px}
+
+/* ---- Donut legend ---- */
+.donut-flex{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:6px}
+.donut-legend{display:flex;flex-direction:column;gap:11px;flex:1;min-width:170px}
+.donut-legend .row{display:flex;align-items:center;gap:10px;font-size:13px}
+.donut-legend .row .nm{color:var(--text-2)}
+.donut-legend .row .val{margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums}
+.donut-legend .row small{display:block;color:var(--muted);font-size:11px;margin-left:auto}
+
+/* ---- Funnel ---- */
+.funnel{display:flex;flex-direction:column;gap:11px;margin-top:12px}
+.funnel-row{display:flex;flex-direction:column;gap:6px}
+.funnel-meta{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px}
+.funnel-meta .lab{color:var(--text-2);font-weight:500}
+.funnel-meta .num{font-weight:600;font-variant-numeric:tabular-nums}
+.funnel-meta .rate{color:var(--muted);font-size:11.5px;font-weight:500;margin-left:7px}
+.funnel-track{height:30px;border-radius:9px;background:var(--surface-2);overflow:hidden}
+.funnel-bar{height:100%;border-radius:9px;display:flex;align-items:center;transition:width .6s cubic-bezier(.4,0,.2,1)}
+
+/* ---- Account cards ---- */
+.acct-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.acct-card{padding:18px}
+.acct-head{display:flex;align-items:center;gap:11px;margin-bottom:15px}
+.acct-plat{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;flex:0 0 38px}
+.acct-plat svg{width:20px;height:20px;fill:none;stroke-width:1.7}
+.acct-plat.ig{background:var(--c-ig-soft)}.acct-plat.ig svg{stroke:var(--c-ig)}
+.acct-plat.tt{background:var(--c-tt-soft)}.acct-plat.tt svg{stroke:var(--c-tt)}
+.acct-head .nm{font-weight:600;font-size:14px;line-height:1.15}
+.acct-head .hd{font-size:11.5px;color:var(--muted)}
+.acct-head .badge{margin-left:auto}
+.acct-followers{display:flex;align-items:baseline;gap:9px;margin-bottom:3px}
+.acct-followers .big{font-size:25px;font-weight:700;letter-spacing:-.02em}
+.acct-followers .lbl{font-size:11.5px;color:var(--muted)}
+.acct-metrics{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border-radius:12px;overflow:hidden;margin-top:14px}
+.acct-metrics .m{background:var(--surface);padding:11px 12px}
+.acct-metrics .m .v{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.acct-metrics .m .k{font-size:11px;color:var(--muted);margin-top:1px}
+.acct-metrics .m .na{color:var(--muted);font-size:12px;font-weight:500;font-style:italic}
+
+/* ---- Engagement breakdown ---- */
+.eng-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.eng-item{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:15px}
+.eng-item .ico{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:var(--pink-soft);margin-bottom:11px}
+.eng-item .ico svg{width:16px;height:16px;stroke:var(--pink);fill:none;stroke-width:1.8}
+.eng-item .v{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.eng-item .k{font-size:12px;color:var(--text-2);margin-top:2px}
+.eng-item .na{font-size:11px;color:var(--muted);font-style:italic;margin-top:3px}
+
+/* ---- Table ---- */
+.table-wrap{width:100%;overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:720px}
+th{text-align:left;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0 14px 13px}
+th.num,td.num{text-align:right;font-variant-numeric:tabular-nums}
+td{padding:13px 14px;border-top:1px solid var(--line);font-size:13px;vertical-align:middle}
+tbody tr:hover td{background:var(--surface-2)}
+.rank{width:27px;height:27px;border-radius:9px;background:var(--pink-soft);color:#ff8bbd;font-weight:700;display:grid;place-items:center;font-size:12.5px}
+.rank.gold{background:var(--pink-soft-2);color:var(--pink-2)}
+.post-cell{display:flex;align-items:center;gap:12px}
+.thumb{width:44px;height:44px;border-radius:11px;flex:0 0 44px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#3a3348,#26212f)}
+.thumb svg{width:19px;height:19px;stroke:#b9b2c9;fill:none;stroke-width:1.6}
+.post-cell b{font-weight:600;font-size:13px}
+.post-cell small{color:var(--muted);display:block;font-size:11.5px;margin-top:1px}
+.pill{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:6px}
+.pill .d{width:7px;height:7px;border-radius:50%}
+.pill.ig{color:#ff8bbd;background:var(--c-ig-soft)}
+.pill.tt{color:#4fc7d4;background:var(--c-tt-soft)}
+.num-strong{font-weight:600}
+
+/* ---- Footer ---- */
+.footer{margin:32px 2px 0;padding-top:20px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-start}
+.footer .legend-src{display:flex;flex-direction:column;gap:7px;font-size:11.5px;color:var(--muted);max-width:640px}
+.footer .legend-src .r{display:flex;align-items:center;gap:8px}
+.footer .legend-src .dotk{width:9px;height:9px;border-radius:50%;flex:0 0 9px}
+.footer .brandline{font-size:11.5px;color:var(--muted);text-align:right}
+.footer .brandline b{color:var(--text-2);font-weight:600}
+
+/* ---- Tooltip ---- */
+#tip{
+  position:fixed;z-index:100;pointer-events:none;opacity:0;transition:opacity .12s;
+  background:var(--surface-3);border:1px solid var(--line-3);border-radius:11px;
+  padding:9px 12px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:120px;
+}
+#tip .tt-title{font-weight:600;font-size:11.5px;color:var(--text);margin-bottom:6px}
+#tip .tt-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-2);margin-top:3px}
+#tip .tt-row .d{width:9px;height:9px;border-radius:3px;flex:0 0 9px}
+#tip .tt-row .vv{margin-left:auto;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+
+.backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:45}
+.backdrop.show{display:block}
+
+/* ================= RESPONSIVE ================= */
+@media(min-width:1080px){
+  .sidebar{transform:none}
+  .main{margin-left:var(--sidebar-w)}
+  .hamburger{display:none}
+  .backdrop{display:none!important}
+}
+@media(max-width:920px){
+  .grid-2,.grid-2b{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .content{padding:18px 15px 34px}
+  .topbar{padding:11px 15px}
+  .kpi-value{font-size:24px}
+  .filters .filter span{display:none}
+  .filter{padding:9px 11px}
+  .footer{flex-direction:column}
+  .footer .brandline{text-align:left}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar" id="sidebar" aria-label="Navegação">
+    <div class="brand">
+      <div class="brand-mark">S</div>
+      <div class="brand-txt">
+        <b>Sumirê</b>
+        <small>Analytics · Orgânico</small>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Visão geral
+      </div>
+
+      <div class="nav-label">Sumirê Perfumaria</div>
+      <div class="nav-item">
+        <span class="acct-dot" style="background:var(--c-ig)"></span><span class="grow">Instagram</span>
+        <span class="nav-tag real">Real</span>
+      </div>
+      <div class="nav-item">
+        <span class="acct-dot" style="background:var(--c-tt)"></span><span class="grow">TikTok</span>
+        <span class="nav-tag demo">Exemplo</span>
+      </div>
+
+      <div class="nav-label">Sumirê Exclusivos</div>
+      <div class="nav-item">
+        <span class="acct-dot" style="background:var(--c-3)"></span><span class="grow">Instagram</span>
+        <span class="nav-tag demo">Exemplo</span>
+      </div>
+      <div class="nav-item">
+        <span class="acct-dot" style="background:var(--c-4)"></span><span class="grow">TikTok</span>
+        <span class="nav-tag demo">Exemplo</span>
+      </div>
+
+      <div class="nav-label">Análises</div>
+      <div class="nav-item"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Comparativo mensal</div>
+      <div class="nav-item"><svg viewBox="0 0 24 24"><path d="m12 3 2.4 5.4L20 9l-4 3.9 1 6-5-2.9-5 2.9 1-6L4 9l5.6-.6z"/></svg>Top conteúdos</div>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="avatar">GB</div>
+      <div>
+        <b>Relatório Sumirê</b>
+        <small>Prévia · V4 Company</small>
+      </div>
+    </div>
+  </aside>
+  <div class="backdrop" id="backdrop"></div>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Abrir menu">
+        <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <div class="page-title">
+        <h1>Visão geral</h1>
+        <p>4 contas · Instagram &amp; TikTok · consolidado</p>
+      </div>
+      <div class="filters">
+        <button class="filter"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg><span>Perfil: Todos</span><svg class="chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button class="filter"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M3 9h18"/></svg><span>Plataforma: Todas</span><svg class="chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button class="filter primary"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/></svg><span>03–10 Jul 2026</span></button>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <div class="notice">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+        <div><b>Prévia para validação.</b> Sumirê Perfumaria · Instagram usa <b>dados reais</b> (Windsor.ai, últimos 7 dias). As demais 3 contas usam <b>dados de exemplo</b> em ordem de grandeza plausível, sinalizados com o selo <span class="badge demo" style="vertical-align:middle">Exemplo</span>. Histórico mensal e paleta de marca ainda em confirmação.</div>
+      </div>
+
+      <!-- ===== KPIs consolidados ===== -->
+      <div class="section-head">
+        <h2><span class="tick"></span>Indicadores do período</h2>
+        <span class="hint">consolidado das 4 contas · vs. 7 dias anteriores</span>
+      </div>
+      <div class="kpi-grid">
+
+        <div class="card kpi">
+          <div class="kpi-top">
+            <div class="kpi-icn"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+            <span class="delta up"><svg viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg>1,1%</span>
+          </div>
+          <div class="kpi-label">Seguidores totais</div>
+          <div class="kpi-value tnum">197.142</div>
+          <div class="kpi-sub"><span><b>+2.074</b> no período</span></div>
+          <svg class="kpi-spark" data-spark="197,196.6,196.8,197,197.05,197.1,197.142" data-color="--pink" viewBox="0 0 220 40" height="34" preserveAspectRatio="none"></svg>
+        </div>
+
+        <div class="card kpi">
+          <div class="kpi-top">
+            <div class="kpi-icn teal"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></div>
+            <span class="delta up"><svg viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg>9,4%</span>
+          </div>
+          <div class="kpi-label">Alcance</div>
+          <div class="kpi-value tnum">286.578</div>
+          <div class="kpi-sub"><span>contas alcançadas</span></div>
+          <svg class="kpi-spark" data-spark="34,36,31,45,72,58,50" data-color="--c-tt" viewBox="0 0 220 40" height="34" preserveAspectRatio="none"></svg>
+        </div>
+
+        <div class="card kpi">
+          <div class="kpi-top">
+            <div class="kpi-icn violet"><svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg></div>
+            <span class="delta up"><svg viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg>18,2%</span>
+          </div>
+          <div class="kpi-label">Visualizações de vídeo</div>
+          <div class="kpi-value tnum">1,09 mi</div>
+          <div class="kpi-sub"><span>Reels + TikTok</span></div>
+          <svg class="kpi-spark" data-spark="120,140,110,130,205,160,190" data-color="--c-3" viewBox="0 0 220 40" height="34" preserveAspectRatio="none"></svg>
+        </div>
+
+        <div class="card kpi">
+          <div class="kpi-top">
+            <div class="kpi-icn"><svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/></svg></div>
+            <span class="delta up"><svg viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg>12,7%</span>
+          </div>
+          <div class="kpi-label">Engajamento total</div>
+          <div class="kpi-value tnum">72.614</div>
+          <div class="kpi-sub"><span>curtidas + coment. + compart. + salv.</span></div>
+          <svg class="kpi-spark" data-spark="8,9,7.5,10,13.6,11,12.2" data-color="--pink" viewBox="0 0 220 40" height="34" preserveAspectRatio="none"></svg>
+        </div>
+
+        <div class="card kpi">
+          <div class="kpi-top">
+            <div class="kpi-icn teal"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/></svg></div>
+            <span class="delta down"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>0,3 pp</span>
+          </div>
+          <div class="kpi-label">Taxa de engajamento média</div>
+          <div class="kpi-value tnum">3,1%</div>
+          <div class="kpi-sub"><span>ponderada por seguidores</span></div>
+          <svg class="kpi-spark" data-spark="3.4,3.3,3.5,3.2,3.0,3.15,3.1" data-color="--c-tt" viewBox="0 0 220 40" height="34" preserveAspectRatio="none"></svg>
+        </div>
+
+        <div class="card kpi">
+          <div class="kpi-top">
+            <div class="kpi-icn amber"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/></svg></div>
+            <span class="delta up"><svg viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg>6,0%</span>
+          </div>
+          <div class="kpi-label">Publicações no período</div>
+          <div class="kpi-value tnum">38</div>
+          <div class="kpi-sub"><span><b>22</b> TikTok</span><span><b>16</b> Instagram</span></div>
+        </div>
+
+      </div>
+
+      <!-- ===== Evolução + Distribuição ===== -->
+      <div class="section-head">
+        <h2><span class="tick"></span>Evolução &amp; distribuição</h2>
+        <span class="hint">alcance diário · seguidores por perfil</span>
+      </div>
+      <div class="grid-2">
+
+        <div class="card panel">
+          <div class="panel-head">
+            <div><h3>Alcance diário por plataforma</h3><p>Sumirê Perfumaria · 03–09 Jul 2026</p></div>
+            <span class="badge est">IG real · TikTok exemplo</span>
+          </div>
+          <div class="legend">
+            <b><span class="swatch line" style="background:var(--c-ig)"></span> Instagram <span style="color:var(--up);font-size:10px;font-weight:700;margin-left:2px">REAL</span></b>
+            <b><span class="swatch line" style="background:var(--c-tt)"></span> TikTok <span style="color:var(--muted);font-size:10px;font-weight:700;margin-left:2px">EXEMPLO</span></b>
+          </div>
+          <div class="chart-wrap"><svg id="lineChart" class="chart" viewBox="0 0 720 300" role="img" aria-label="Gráfico de linha do alcance diário por plataforma"></svg></div>
+        </div>
+
+        <div class="card panel">
+          <div class="panel-head"><div><h3>Seguidores por perfil</h3><p>participação na base total</p></div></div>
+          <div class="donut-flex">
+            <svg id="donut" width="190" height="190" viewBox="0 0 190 190" role="img" aria-label="Distribuição de seguidores por perfil"></svg>
+            <div class="donut-legend">
+              <div class="row"><span class="swatch" style="background:var(--c-ig)"></span><span class="nm">Perfumaria · IG</span><span class="val">65,3%</span></div>
+              <div class="row"><span class="swatch" style="background:var(--c-tt)"></span><span class="nm">Perfumaria · TikTok</span><span class="val">24,0%</span></div>
+              <div class="row"><span class="swatch" style="background:var(--c-3)"></span><span class="nm">Exclusivos · IG</span><span class="val">6,3%</span></div>
+              <div class="row"><span class="swatch" style="background:var(--c-4)"></span><span class="nm">Exclusivos · TikTok</span><span class="val">4,4%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== MoM + Funil ===== -->
+      <div class="section-head">
+        <h2><span class="tick"></span>Comparativo &amp; jornada</h2>
+        <span class="hint">mês a mês · funil de engajamento</span>
+      </div>
+      <div class="grid-2b">
+
+        <div class="card panel">
+          <div class="panel-head">
+            <div><h3>Comparativo mensal (MoM)</h3><p>Engajamento total por plataforma</p></div>
+            <span class="badge demo">Ilustrativo</span>
+          </div>
+          <div class="legend">
+            <b><span class="swatch" style="background:var(--c-ig)"></span> Instagram</b>
+            <b><span class="swatch" style="background:var(--c-tt)"></span> TikTok</b>
+          </div>
+          <div class="chart-wrap"><svg id="barChart" class="chart" viewBox="0 0 720 300" role="img" aria-label="Gráfico de barras comparativo mensal de engajamento"></svg></div>
+        </div>
+
+        <div class="card panel">
+          <div class="panel-head">
+            <div><h3>Jornada de engajamento</h3><p>Instagram consolidado · Jul</p></div>
+            <span class="badge est">Perfil/bio estimado</span>
+          </div>
+          <div class="funnel">
+            <div class="funnel-row">
+              <div class="funnel-meta"><span class="lab">Alcance</span><span class="num tnum">80.378</span></div>
+              <div class="funnel-track"><div class="funnel-bar" style="width:100%;background:linear-gradient(90deg,var(--pink),#ff62ab)"></div></div>
+            </div>
+            <div class="funnel-row">
+              <div class="funnel-meta"><span class="lab">Interações no conteúdo</span><span class="num tnum">12.528<span class="rate">15,6%</span></span></div>
+              <div class="funnel-track"><div class="funnel-bar" style="width:62%;background:linear-gradient(90deg,var(--pink),#ff62ab);opacity:.82"></div></div>
+            </div>
+            <div class="funnel-row">
+              <div class="funnel-meta"><span class="lab">Perfil visitado <span class="rate">estimado</span></span><span class="num tnum">4.230<span class="rate">5,3%</span></span></div>
+              <div class="funnel-track"><div class="funnel-bar" style="width:38%;background:linear-gradient(90deg,var(--pink),#ff62ab);opacity:.6"></div></div>
+            </div>
+            <div class="funnel-row">
+              <div class="funnel-meta"><span class="lab">Cliques no link da bio <span class="rate">estimado</span></span><span class="num tnum">690<span class="rate">0,9%</span></span></div>
+              <div class="funnel-track"><div class="funnel-bar" style="width:16%;background:linear-gradient(90deg,var(--pink),#ff62ab);opacity:.42"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Desempenho por conta ===== -->
+      <div class="section-head">
+        <h2><span class="tick"></span>Desempenho por conta</h2>
+        <span class="hint">seguidores · alcance · engajamento · publicações</span>
+      </div>
+      <div class="acct-grid">
+
+        <!-- Perfumaria IG — REAL -->
+        <div class="card acct-card">
+          <div class="acct-head">
+            <div class="acct-plat ig"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="var(--c-ig)" stroke="none"/></svg></div>
+            <div><div class="nm">Sumirê Perfumaria</div><div class="hd">Instagram · @perfumariasumire</div></div>
+            <span class="badge real">Real</span>
+          </div>
+          <div class="acct-followers"><span class="big tnum">128.722</span><span class="lbl">seguidores</span><span class="delta up" style="margin-left:auto"><svg viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg>+444</span></div>
+          <div class="acct-metrics">
+            <div class="m"><div class="v tnum">61.478</div><div class="k">Alcance</div></div>
+            <div class="m"><div class="v tnum">326.955</div><div class="k">Views de vídeo</div></div>
+            <div class="m"><div class="v tnum">9.768</div><div class="k">Interações</div></div>
+            <div class="m"><div class="v tnum">2,6%</div><div class="k">Tx. engajamento</div></div>
+            <div class="m"><div class="v tnum">9</div><div class="k">Publicações</div></div>
+            <div class="m"><div class="v na">quando disp.</div><div class="k">Impressões</div></div>
+          </div>
+        </div>
+
+        <!-- Perfumaria TikTok — EXEMPLO -->
+        <div class="card acct-card">
+          <div class="acct-head">
+            <div class="acct-plat tt"><svg viewBox="0 0 24 24"><path d="M9 3v11.6a3 3 0 1 1-3-3"/><path d="M9 7a6 6 0 0 0 6 5V8.6A4.6 4.6 0 0 1 12 4"/></svg></div>
+            <div><div class="nm">Sumirê Perfumaria</div><div class="hd">TikTok · @perfumariasumire</div></div>
+            <span class="badge demo">Exemplo</span>
+          </div>
+          <div class="acct-followers"><span class="big tnum">47.300</span><span class="lbl">seguidores</span><span class="delta up" style="margin-left:auto"><svg viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg>+890</span></div>
+          <div class="acct-metrics">
+            <div class="m"><div class="v tnum">142.500</div><div class="k">Alcance</div></div>
+            <div class="m"><div class="v tnum">512.000</div><div class="k">Views de vídeo</div></div>
+            <div class="m"><div class="v tnum">42.140</div><div class="k">Interações</div></div>
+            <div class="m"><div class="v tnum">4,1%</div><div class="k">Tx. engajamento</div></div>
+            <div class="m"><div class="v tnum">12</div><div class="k">Publicações</div></div>
+            <div class="m"><div class="v na">sem stories</div><div class="k">Stories</div></div>
+          </div>
+        </div>
+
+        <!-- Exclusivos IG — EXEMPLO -->
+        <div class="card acct-card">
+          <div class="acct-head">
+            <div class="acct-plat ig" style="background:rgba(126,104,216,.16)"><svg viewBox="0 0 24 24" style="stroke:var(--c-3)"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="var(--c-3)" stroke="none"/></svg></div>
+            <div><div class="nm">Sumirê Exclusivos</div><div class="hd">Instagram · @exclusivossumire</div></div>
+            <span class="badge demo">Exemplo</span>
+          </div>
+          <div class="acct-followers"><span class="big tnum">12.480</span><span class="lbl">seguidores</span><span class="delta up" style="margin-left:auto"><svg viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg>+310</span></div>
+          <div class="acct-metrics">
+            <div class="m"><div class="v tnum">18.900</div><div class="k">Alcance</div></div>
+            <div class="m"><div class="v tnum">41.200</div><div class="k">Views de vídeo</div></div>
+            <div class="m"><div class="v tnum">3.066</div><div class="k">Interações</div></div>
+            <div class="m"><div class="v tnum">3,4%</div><div class="k">Tx. engajamento</div></div>
+            <div class="m"><div class="v tnum">7</div><div class="k">Publicações</div></div>
+            <div class="m"><div class="v tnum">5</div><div class="k">Stories</div></div>
+          </div>
+        </div>
+
+        <!-- Exclusivos TikTok — EXEMPLO -->
+        <div class="card acct-card">
+          <div class="acct-head">
+            <div class="acct-plat tt" style="background:rgba(184,131,15,.16)"><svg viewBox="0 0 24 24" style="stroke:var(--c-4)"><path d="M9 3v11.6a3 3 0 1 1-3-3"/><path d="M9 7a6 6 0 0 0 6 5V8.6A4.6 4.6 0 0 1 12 4"/></svg></div>
+            <div><div class="nm">Sumirê Exclusivos</div><div class="hd">TikTok · @exclusivossumire</div></div>
+            <span class="badge demo">Exemplo</span>
+          </div>
+          <div class="acct-followers"><span class="big tnum">8.640</span><span class="lbl">seguidores</span><span class="delta up" style="margin-left:auto"><svg viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg>+430</span></div>
+          <div class="acct-metrics">
+            <div class="m"><div class="v tnum">63.700</div><div class="k">Alcance</div></div>
+            <div class="m"><div class="v tnum">208.000</div><div class="k">Views de vídeo</div></div>
+            <div class="m"><div class="v tnum">16.640</div><div class="k">Interações</div></div>
+            <div class="m"><div class="v tnum">4,8%</div><div class="k">Tx. engajamento</div></div>
+            <div class="m"><div class="v tnum">10</div><div class="k">Publicações</div></div>
+            <div class="m"><div class="v na">sem stories</div><div class="k">Stories</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Engajamento detalhado ===== -->
+      <div class="section-head">
+        <h2><span class="tick"></span>Engajamento detalhado</h2>
+        <span class="hint">consolidado das 4 contas</span>
+      </div>
+      <div class="card panel">
+        <div class="eng-grid">
+          <div class="eng-item">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/></svg></div>
+            <div class="v tnum">65.720</div><div class="k">Curtidas</div>
+          </div>
+          <div class="eng-item">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.5 7.5L3 21l2-5.5A8.5 8.5 0 1 1 21 11.5Z"/></svg></div>
+            <div class="v tnum">1.034</div><div class="k">Comentários</div>
+          </div>
+          <div class="eng-item">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="m8 8 4-4 4 4M12 4v13"/></svg></div>
+            <div class="v tnum">3.920</div><div class="k">Compartilhamentos</div>
+            <div class="na">IG: quando disp.</div>
+          </div>
+          <div class="eng-item">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z"/></svg></div>
+            <div class="v tnum">1.940</div><div class="k">Salvamentos</div>
+          </div>
+          <div class="eng-item">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+            <div class="v tnum">4.259</div><div class="k">Visitas ao perfil</div>
+            <div class="na">parcial via API</div>
+          </div>
+          <div class="eng-item">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></div>
+            <div class="v tnum">1.670</div><div class="k">Cliques na bio</div>
+            <div class="na">estimado</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Top conteúdos ===== -->
+      <div class="section-head">
+        <h2><span class="tick"></span>Top 5 conteúdos do período</h2>
+        <span class="hint">por alcance</span>
+      </div>
+      <div class="card panel" style="padding:20px 20px 10px">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:40px">#</th>
+                <th>Publicação</th>
+                <th>Perfil / plataforma</th>
+                <th class="num">Alcance</th>
+                <th class="num">Interações</th>
+                <th class="num">Salvos</th>
+                <th class="num">Tx. eng.</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="rank gold">1</div></td>
+                <td><div class="post-cell"><div class="thumb"><svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg></div><div><b>Lançamento Minná · Eau de Parfum</b><small>Reel · 07 Jul</small></div></div></td>
+                <td><span class="pill ig"><span class="d" style="background:var(--c-ig)"></span>Perfumaria · IG</span></td>
+                <td class="num num-strong">29.874</td><td class="num">3.086</td><td class="num">210</td><td class="num num-strong">10,3%</td>
+              </tr>
+              <tr>
+                <td><div class="rank">2</div></td>
+                <td><div class="post-cell"><div class="thumb"><svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg></div><div><b>Rotina glow com Muah!</b><small>Vídeo · 05 Jul · exemplo</small></div></div></td>
+                <td><span class="pill tt"><span class="d" style="background:var(--c-tt)"></span>Perfumaria · TikTok</span></td>
+                <td class="num num-strong">27.400</td><td class="num">2.190</td><td class="num">165</td><td class="num num-strong">8,0%</td>
+              </tr>
+              <tr>
+                <td><div class="rank">3</div></td>
+                <td><div class="post-cell"><div class="thumb"><svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg></div><div><b>Kit presente dos sonhos</b><small>Vídeo · 06 Jul · exemplo</small></div></div></td>
+                <td><span class="pill tt"><span class="d" style="background:var(--c-4)"></span>Exclusivos · TikTok</span></td>
+                <td class="num num-strong">21.300</td><td class="num">1.640</td><td class="num">96</td><td class="num num-strong">7,7%</td>
+              </tr>
+              <tr>
+                <td><div class="rank">4</div></td>
+                <td><div class="post-cell"><div class="thumb"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 15l5-5 4 4 3-3 6 6"/></svg></div><div><b>Perfumes que duram +12h</b><small>Carrossel · 08 Jul · exemplo</small></div></div></td>
+                <td><span class="pill ig"><span class="d" style="background:var(--c-ig)"></span>Perfumaria · IG</span></td>
+                <td class="num num-strong">12.900</td><td class="num">980</td><td class="num">142</td><td class="num num-strong">7,6%</td>
+              </tr>
+              <tr>
+                <td><div class="rank">5</div></td>
+                <td><div class="post-cell"><div class="thumb"><svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg></div><div><b>Skincare noturno passo a passo</b><small>Reel · 09 Jul · exemplo</small></div></div></td>
+                <td><span class="pill ig"><span class="d" style="background:var(--c-3)"></span>Exclusivos · IG</span></td>
+                <td class="num num-strong">9.400</td><td class="num">720</td><td class="num">88</td><td class="num num-strong">7,7%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== Footer ===== -->
+      <div class="footer">
+        <div class="legend-src">
+          <div class="r"><span class="dotk" style="background:var(--up)"></span><span><b style="color:var(--text-2)">Dados reais</b> — Sumirê Perfumaria · Instagram, via Windsor.ai (últimos 7 dias, 03–10 Jul 2026).</span></div>
+          <div class="r"><span class="dotk" style="background:var(--c-4)"></span><span><b style="color:var(--text-2)">Dados de exemplo</b> — Perfumaria/TikTok, Exclusivos/IG e Exclusivos/TikTok: ordem de grandeza plausível, para validar layout.</span></div>
+          <div class="r"><span class="dotk" style="background:var(--muted)"></span><span>Impressões, cliques na bio e histórico mensal: <i>“quando disponível”</i> / estimados — dependem da API e de coleta futura.</span></div>
+        </div>
+        <div class="brandline">
+          <b>Sumirê</b> · 41 anos de beleza<br>
+          Identidade visual <b>em validação com o cliente</b><br>
+          <span style="opacity:.75">cor de marca #FF1476 provisória (inferida do site)</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="tip" role="tooltip"></div>
+
+<script>
+(function(){
+  "use strict";
+  const css = getComputedStyle(document.documentElement);
+  const C = n => css.getPropertyValue(n).trim();
+  const fmt = n => n.toLocaleString('pt-BR');
+  const tip = document.getElementById('tip');
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (t,a) => { const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); return e; };
+
+  /* ---------- Sidebar ---------- */
+  const sb=document.getElementById('sidebar'), bd=document.getElementById('backdrop'), hb=document.getElementById('hamburger');
+  const toggle=()=>{sb.classList.toggle('open');bd.classList.toggle('show');};
+  hb.addEventListener('click',toggle); bd.addEventListener('click',toggle);
+
+  /* ---------- Tooltip helpers ---------- */
+  function showTip(html,x,y){ tip.innerHTML=html; tip.style.opacity='1';
+    const r=tip.getBoundingClientRect(); let nx=x+14, ny=y-r.height-12;
+    if(nx+r.width>window.innerWidth-8) nx=x-r.width-14;
+    if(ny<8) ny=y+16;
+    tip.style.left=nx+'px'; tip.style.top=ny+'px';
+  }
+  const hideTip=()=>{tip.style.opacity='0';};
+
+  /* ---------- Sparklines ---------- */
+  document.querySelectorAll('.kpi-spark').forEach(svg=>{
+    const vals=svg.dataset.spark.split(',').map(Number);
+    const col=C(svg.dataset.color)||C('--pink');
+    const W=220,H=40,p=4, mn=Math.min(...vals), mx=Math.max(...vals), span=(mx-mn)||1;
+    const X=i=>p+i*(W-2*p)/(vals.length-1);
+    const Y=v=>H-p-((v-mn)/span)*(H-2*p);
+    const pts=vals.map((v,i)=>X(i)+','+Y(v)).join(' ');
+    const gid='g'+Math.random().toString(36).slice(2,7);
+    const defs=el('defs'); const lg=el('linearGradient',{id:gid,x1:'0',y1:'0',x2:'0',y2:'1'});
+    lg.appendChild(el('stop',{offset:'0',"stop-color":col,"stop-opacity":'.28'}));
+    lg.appendChild(el('stop',{offset:'1',"stop-color":col,"stop-opacity":'0'}));
+    defs.appendChild(lg); svg.appendChild(defs);
+    svg.appendChild(el('polygon',{points:pts+` ${X(vals.length-1)},${H} ${X(0)},${H}`,fill:'url(#'+gid+')'}));
+    svg.appendChild(el('polyline',{points:pts,fill:'none',stroke:col,"stroke-width":'2',"stroke-linecap":'round',"stroke-linejoin":'round'}));
+    svg.appendChild(el('circle',{cx:X(vals.length-1),cy:Y(vals[vals.length-1]),r:'2.6',fill:col}));
+  });
+
+  /* ---------- Line chart ---------- */
+  (function(){
+    const svg=document.getElementById('lineChart');
+    const labels=['3 Jul','4 Jul','5 Jul','6 Jul','7 Jul','8 Jul','9 Jul'];
+    const ig=[6142,5978,2843,8834,29874,4827,2980];
+    const tt=[14200,16800,12400,21300,33500,24700,18900];
+    const W=720,H=300, L=52,R=20,T=24,B=44;
+    const plotW=W-L-R, plotH=H-T-B;
+    const maxV=35000, ticks=[0,10000,20000,30000];
+    const X=i=>L+i*plotW/(labels.length-1);
+    const Y=v=>T+plotH-(v/maxV)*plotH;
+    // grid + y labels
+    ticks.forEach(t=>{
+      svg.appendChild(el('line',{x1:L,y1:Y(t),x2:W-R,y2:Y(t),stroke:C('--line'),"stroke-width":'1'}));
+      const tx=el('text',{x:L-10,y:Y(t)+4,"text-anchor":'end',fill:C('--muted'),"font-size":'11',"font-family":'Poppins'});
+      tx.textContent=(t/1000)+'k'; svg.appendChild(tx);
+    });
+    // x labels
+    labels.forEach((lb,i)=>{
+      const tx=el('text',{x:X(i),y:H-16,"text-anchor":'middle',fill:C('--muted'),"font-size":'11.5',"font-family":'Poppins'});
+      tx.textContent=lb; svg.appendChild(tx);
+    });
+    function series(data,color,areaOp){
+      const pts=data.map((v,i)=>X(i)+','+Y(v)).join(' ');
+      if(areaOp){
+        const gid='a'+color.replace(/[^a-z0-9]/gi,'');
+        const defs=el('defs'); const lg=el('linearGradient',{id:gid,x1:'0',y1:'0',x2:'0',y2:'1'});
+        lg.appendChild(el('stop',{offset:'0',"stop-color":color,"stop-opacity":'.22'}));
+        lg.appendChild(el('stop',{offset:'1',"stop-color":color,"stop-opacity":'0'}));
+        defs.appendChild(lg); svg.appendChild(defs);
+        svg.appendChild(el('polygon',{points:pts+` ${X(data.length-1)},${T+plotH} ${X(0)},${T+plotH}`,fill:'url(#'+gid+')'}));
+      }
+      svg.appendChild(el('polyline',{points:pts,fill:'none',stroke:color,"stroke-width":'2.6',"stroke-linecap":'round',"stroke-linejoin":'round'}));
+      data.forEach((v,i)=>{
+        svg.appendChild(el('circle',{cx:X(i),cy:Y(v),r:'4',fill:color,stroke:C('--surface'),"stroke-width":'2'}));
+      });
+    }
+    series(tt,C('--c-tt'),false);
+    series(ig,C('--c-ig'),true);
+    // hover layer
+    const hl=el('line',{x1:0,y1:T,x2:0,y2:T+plotH,stroke:C('--line-3'),"stroke-width":'1',opacity:'0'});
+    svg.appendChild(hl);
+    labels.forEach((lb,i)=>{
+      const hit=el('rect',{x:X(i)-plotW/labels.length/2,y:T,width:plotW/labels.length,height:plotH,fill:'transparent'});
+      hit.addEventListener('mousemove',ev=>{
+        hl.setAttribute('x1',X(i)); hl.setAttribute('x2',X(i)); hl.setAttribute('opacity','1');
+        showTip(`<div class="tt-title">${lb} · 2026</div>
+          <div class="tt-row"><span class="d" style="background:${C('--c-ig')}"></span>Instagram <span class="vv">${fmt(ig[i])}</span></div>
+          <div class="tt-row"><span class="d" style="background:${C('--c-tt')}"></span>TikTok <span class="vv">${fmt(tt[i])}</span></div>`, ev.clientX, ev.clientY);
+      });
+      hit.addEventListener('mouseleave',()=>{hl.setAttribute('opacity','0');hideTip();});
+      svg.appendChild(hit);
+    });
+  })();
+
+  /* ---------- Bar chart (MoM grouped) ---------- */
+  (function(){
+    const svg=document.getElementById('barChart');
+    const months=['Fev','Mar','Abr','Mai','Jun'];
+    const ig=[22100,26800,31200,38400,44900];
+    const tt=[12400,15600,19800,24300,29700];
+    const W=720,H=300,L=52,R=20,T=24,B=44;
+    const plotW=W-L-R, plotH=H-T-B, maxV=50000, ticks=[0,25000,50000];
+    const groupW=plotW/months.length, bw=20, gap=6;
+    const Y=v=>T+plotH-(v/maxV)*plotH;
+    ticks.forEach(t=>{
+      svg.appendChild(el('line',{x1:L,y1:Y(t),x2:W-R,y2:Y(t),stroke:C('--line'),"stroke-width":'1'}));
+      const tx=el('text',{x:L-10,y:Y(t)+4,"text-anchor":'end',fill:C('--muted'),"font-size":'11',"font-family":'Poppins'});
+      tx.textContent=(t/1000)+'k'; svg.appendChild(tx);
+    });
+    function rrect(x,y,w,h,col){
+      // rounded top only
+      const r=4; if(h<=0)return;
+      const rr=Math.min(r,h);
+      const d=`M${x},${y+h} L${x},${y+rr} Q${x},${y} ${x+rr},${y} L${x+w-rr},${y} Q${x+w},${y} ${x+w},${y+rr} L${x+w},${y+h} Z`;
+      return el('path',{d:d,fill:col});
+    }
+    months.forEach((m,i)=>{
+      const cx=L+i*groupW+groupW/2;
+      const x1=cx-bw-gap/2, x2=cx+gap/2;
+      svg.appendChild(rrect(x1,Y(ig[i]),bw,T+plotH-Y(ig[i]),C('--c-ig')));
+      svg.appendChild(rrect(x2,Y(tt[i]),bw,T+plotH-Y(tt[i]),C('--c-tt')));
+      const tx=el('text',{x:cx,y:H-16,"text-anchor":'middle',fill:C('--muted'),"font-size":'11.5',"font-family":'Poppins'});
+      tx.textContent=m; svg.appendChild(tx);
+      // hit area
+      const hit=el('rect',{x:L+i*groupW,y:T,width:groupW,height:plotH,fill:'transparent'});
+      hit.addEventListener('mousemove',ev=>{
+        showTip(`<div class="tt-title">${m} · 2026</div>
+          <div class="tt-row"><span class="d" style="background:${C('--c-ig')}"></span>Instagram <span class="vv">${fmt(ig[i])}</span></div>
+          <div class="tt-row"><span class="d" style="background:${C('--c-tt')}"></span>TikTok <span class="vv">${fmt(tt[i])}</span></div>`, ev.clientX, ev.clientY);
+      });
+      hit.addEventListener('mouseleave',hideTip);
+      svg.appendChild(hit);
+    });
+  })();
+
+  /* ---------- Donut ---------- */
+  (function(){
+    const svg=document.getElementById('donut');
+    const data=[
+      {n:'Perfumaria · IG', v:128722, c:C('--c-ig')},
+      {n:'Perfumaria · TikTok', v:47300, c:C('--c-tt')},
+      {n:'Exclusivos · IG', v:12480, c:C('--c-3')},
+      {n:'Exclusivos · TikTok', v:8640, c:C('--c-4')}
+    ];
+    const total=data.reduce((a,d)=>a+d.v,0);
+    const cx=95,cy=95,r=70,sw=22, circ=2*Math.PI*r, gapPx=3;
+    svg.appendChild(el('circle',{cx,cy,r,fill:'none',stroke:C('--surface-2'),"stroke-width":sw}));
+    let off=0;
+    data.forEach(d=>{
+      const frac=d.v/total, len=frac*circ;
+      const c=el('circle',{cx,cy,r,fill:'none',stroke:d.c,"stroke-width":sw,
+        "stroke-dasharray":`${Math.max(len-gapPx,0.5)} ${circ-Math.max(len-gapPx,0.5)}`,
+        "stroke-dashoffset":-off, transform:`rotate(-90 ${cx} ${cy})`});
+      c.style.cursor='pointer';
+      c.addEventListener('mousemove',ev=>{
+        showTip(`<div class="tt-title">${d.n}</div>
+          <div class="tt-row"><span class="d" style="background:${d.c}"></span>Seguidores <span class="vv">${fmt(d.v)}</span></div>
+          <div class="tt-row" style="color:var(--muted)">Participação <span class="vv">${(frac*100).toFixed(1).replace('.',',')}%</span></div>`, ev.clientX, ev.clientY);
+      });
+      c.addEventListener('mouseleave',hideTip);
+      svg.appendChild(c);
+      off+=len;
+    });
+    const t1=el('text',{x:cx,y:cy-4,"text-anchor":'middle',fill:C('--text'),"font-size":'23',"font-weight":'700',"font-family":'Poppins'});
+    t1.textContent='197,1'; svg.appendChild(t1);
+    const t2=el('text',{x:cx,y:cy+15,"text-anchor":'middle',fill:C('--muted'),"font-size":'11',"font-family":'Poppins'});
+    t2.textContent='mil seguidores'; svg.appendChild(t2);
+  })();
+
+})();
+</script>
+</body>
+</html>
