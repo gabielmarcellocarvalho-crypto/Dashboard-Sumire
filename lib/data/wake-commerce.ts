@@ -1,3 +1,5 @@
+import type { DateRange } from '@/lib/date-range';
+import { WAKE_PAID_STATUS_IDS } from '@/lib/wake-status';
 import type { DataResult } from './types';
 import { ok, notConfigured, errored } from './types';
 
@@ -19,21 +21,26 @@ export interface WakeOrder {
 export interface WakeOrdersSummary {
   periodStart: string;
   periodEnd: string;
-  ordersReturned: number;
-  ordersValid: number;
+  /** Todo pedido criado no período (briefing v3, seção 5.1) — NÃO filtra por `valido`. */
+  ordersCaptured: number;
+  ordersBilled: number;
   revenueCaptured: number;
-  truncated: boolean;
-  daily: Array<{ date: string; ordersValid: number; revenue: number }>;
+  revenueBilled: number;
+  approvalRate: number | null;
+  daily: Array<{ date: string; ordersCaptured: number; ordersBilled: number; revenueCaptured: number; revenueBilled: number }>;
 }
 
-function formatDate(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+/** Wake espera `yyyy-mm-dd hh:mm:ss`; assumimos que o horário da loja é America/Sao_Paulo (mesmo timezone de `DateRange`). */
+function toWakeDateTime(isoDate: string, edge: 'start' | 'end'): string {
+  return `${isoDate} ${edge === 'start' ? '00:00:00' : '23:59:59'}`;
 }
 
-const MAX_PAGES = 20; // limite de segurança (20 x 50 = 1000 pedidos) pra não rodar indefinidamente
+// Teto de segurança bem acima de qualquer volume mensal real observado (~700 pedidos/mês
+// na amostra usada pra derivar `WAKE_PAID_STATUS_IDS`) — se estourar, é sinal genuíno de
+// truncamento, não um limite artificial baixo como o `MAX_PAGES = 20` anterior.
+const MAX_PAGES = 400; // 400 x 50 = 20.000 pedidos
 
-export async function getWakeOrdersSummary(days = 7): Promise<DataResult<WakeOrdersSummary>> {
+export async function getWakeOrdersSummary(range: DateRange): Promise<DataResult<WakeOrdersSummary>> {
   const apiUrl = process.env.WAKE_COMMERCE_API_URL;
   const apiKey = process.env.WAKE_COMMERCE_API_KEY;
 
@@ -41,17 +48,14 @@ export async function getWakeOrdersSummary(days = 7): Promise<DataResult<WakeOrd
     return notConfigured('WAKE_COMMERCE_API_URL ou WAKE_COMMERCE_API_KEY ausentes em .env.local.');
   }
 
-  const end = new Date();
-  const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
-
   const orders: WakeOrder[] = [];
   let truncated = false;
 
   try {
     for (let pagina = 1; pagina <= MAX_PAGES; pagina++) {
       const params = new URLSearchParams({
-        dataInicial: formatDate(start),
-        dataFinal: formatDate(end),
+        dataInicial: toWakeDateTime(range.startDate, 'start'),
+        dataFinal: toWakeDateTime(range.endDate, 'end'),
         pagina: String(pagina),
         quantidadeRegistros: '50',
       });
@@ -76,33 +80,41 @@ export async function getWakeOrdersSummary(days = 7): Promise<DataResult<WakeOrd
     return errored(`Falha ao consultar Wake Commerce API: ${(err as Error).message}`);
   }
 
-  const valid = orders.filter((o) => o.valido);
+  if (truncated) {
+    // Regra 23.3: nunca calcular um período parcialmente truncado como se fosse completo.
+    return errored(
+      `Mais de ${MAX_PAGES * 50} pedidos no período — paginação truncada pelo teto de segurança. Reduza o período ou aumente MAX_PAGES em lib/data/wake-commerce.ts.`,
+    );
+  }
 
-  const byDate = new Map<string, { ordersValid: number; revenue: number }>();
-  for (const o of valid) {
+  // Captado = TODO pedido criado no período, sem filtrar por `valido` (briefing v3, seção 5.1/23.2).
+  const billed = orders.filter((o) => WAKE_PAID_STATUS_IDS.includes(o.situacaoPedidoId));
+
+  const byDate = new Map<string, { ordersCaptured: number; ordersBilled: number; revenueCaptured: number; revenueBilled: number }>();
+  for (const o of orders) {
     const date = (o.data ?? '').slice(0, 10);
     if (!date) continue;
-    const entry = byDate.get(date) ?? { ordersValid: 0, revenue: 0 };
-    entry.ordersValid += 1;
-    entry.revenue += o.valorTotalPedido ?? 0;
+    const entry = byDate.get(date) ?? { ordersCaptured: 0, ordersBilled: 0, revenueCaptured: 0, revenueBilled: 0 };
+    entry.ordersCaptured += 1;
+    entry.revenueCaptured += o.valorTotalPedido ?? 0;
+    if (WAKE_PAID_STATUS_IDS.includes(o.situacaoPedidoId)) {
+      entry.ordersBilled += 1;
+      entry.revenueBilled += o.valorTotalPedido ?? 0;
+    }
     byDate.set(date, entry);
   }
-  const daily = [...byDate.entries()]
-    .map(([date, v]) => ({ date, ...v }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const daily = [...byDate.entries()].map(([date, v]) => ({ date, ...v })).sort((a, b) => a.date.localeCompare(b.date));
 
   const summary: WakeOrdersSummary = {
-    periodStart: formatDate(start),
-    periodEnd: formatDate(end),
-    ordersReturned: orders.length,
-    ordersValid: valid.length,
-    revenueCaptured: valid.reduce((acc, o) => acc + (o.valorTotalPedido ?? 0), 0),
-    truncated,
+    periodStart: range.startDate,
+    periodEnd: range.endDate,
+    ordersCaptured: orders.length,
+    ordersBilled: billed.length,
+    revenueCaptured: orders.reduce((acc, o) => acc + (o.valorTotalPedido ?? 0), 0),
+    revenueBilled: billed.reduce((acc, o) => acc + (o.valorTotalPedido ?? 0), 0),
+    approvalRate: orders.length > 0 ? billed.length / orders.length : null,
     daily,
   };
 
-  // "Proxy": ainda não confirmamos com o time Wake o mapeamento de situacaoPedidoId
-  // pra captado/aprovado/faturado (briefing v2.0, seção 7) — tratamos "válido" como
-  // aproximação de "captado" até essa confirmação chegar.
-  return ok(summary, 'proxy');
+  return ok(summary, 'oficial');
 }

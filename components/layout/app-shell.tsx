@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { GridIcon, MenuIcon, CalendarIcon, CartIcon, SearchIcon, MegaphoneIcon, UsersIcon } from '@/components/icons';
+import { GridIcon, MenuIcon, CartIcon, SearchIcon, MegaphoneIcon, UsersIcon, CalendarIcon, TargetIcon, ShieldCheckIcon } from '@/components/icons';
+import { DateRangePicker } from '@/components/filters/date-range-picker';
+import type { navVisibility } from '@/lib/env';
 
 interface NavLeaf {
   href: string;
@@ -11,6 +13,8 @@ interface NavLeaf {
   icon: React.ReactNode;
   /** Ativa o item se o pathname começar com `href` (seções com sub-rotas). */
   prefix?: boolean;
+  /** Chave em `navVisibility` que precisa ser `true` pra este item aparecer — omitido = sempre visível. */
+  visibilityKey?: keyof typeof navVisibility;
 }
 
 function NavItem({ item }: { item: NavLeaf }) {
@@ -26,14 +30,23 @@ function NavItem({ item }: { item: NavLeaf }) {
 
 const SECTIONS: NavLeaf[] = [
   { href: '/', label: 'Overview geral', icon: <GridIcon /> },
-  { href: '/midia-paga', label: 'Mídia paga', icon: <MegaphoneIcon />, prefix: true },
-  { href: '/seo', label: 'SEO', icon: <SearchIcon /> },
-  { href: '/ecommerce', label: 'Ecommerce', icon: <CartIcon /> },
-  { href: '/organico', label: 'Orgânico', icon: <UsersIcon />, prefix: true },
+  { href: '/midia-paga', label: 'Mídia paga', icon: <MegaphoneIcon />, prefix: true, visibilityKey: 'midiaPaga' },
+  { href: '/seo', label: 'SEO', icon: <SearchIcon />, visibilityKey: 'seo' },
+  { href: '/ecommerce', label: 'Ecommerce', icon: <CartIcon />, visibilityKey: 'ecommerce' },
+  { href: '/organico', label: 'Orgânico', icon: <UsersIcon />, prefix: true, visibilityKey: 'organico' },
+  { href: '/metas', label: 'Metas', icon: <TargetIcon /> },
+  { href: '/qualidade-dados', label: 'Qualidade de dados', icon: <ShieldCheckIcon /> },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  navVisibility,
+}: {
+  children: React.ReactNode;
+  navVisibility: Record<string, boolean>;
+}) {
   const [open, setOpen] = useState(false);
+  const sections = SECTIONS.filter((item) => !item.visibilityKey || navVisibility[item.visibilityKey]);
 
   return (
     <div className="app">
@@ -47,7 +60,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="nav">
-          {SECTIONS.map((item) => (
+          {sections.map((item) => (
             <NavItem item={item} key={item.href} />
           ))}
         </nav>
@@ -68,10 +81,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <MenuIcon />
           </button>
           <div className="filters" style={{ marginLeft: 0 }}>
-            <button className="filter primary">
-              <CalendarIcon />
-              <span>Últimos 7 dias</span>
-            </button>
+            <Suspense
+              fallback={
+                <button className="filter primary" disabled>
+                  <CalendarIcon />
+                  <span>Carregando período…</span>
+                </button>
+              }
+            >
+              <DateRangePicker />
+            </Suspense>
           </div>
         </header>
 

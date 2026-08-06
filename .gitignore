@@ -43,3 +43,6 @@ yarn-error.log*
 
 # Dados de cliente coletados via Windsor.ai / APIs de mídia paga (NUNCA versionar — dados privados)
 /data/
+
+.vercel
+.env*.local

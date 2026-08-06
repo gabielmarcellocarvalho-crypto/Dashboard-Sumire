@@ -16,6 +16,7 @@ export const integrations = {
   windsorTiktokExclusivos: has('WINDSOR_AI_API_KEY', 'WINDSOR_TIKTOK_SUMIRE_EXCLUSIVOS_ACCOUNT_ID'),
 
   ga4: has('GA4_SERVICE_ACCOUNT_CLIENT_EMAIL', 'GA4_SERVICE_ACCOUNT_PRIVATE_KEY', 'GA4_SUMIRE_PERFUMARIA_PROPERTY_ID'),
+  searchConsole: has('GSC_SERVICE_ACCOUNT_CLIENT_EMAIL', 'GSC_SERVICE_ACCOUNT_PRIVATE_KEY', 'GSC_SITE_URL'),
 
   googleAds: has(
     'GOOGLE_ADS_DEVELOPER_TOKEN',
@@ -32,3 +33,23 @@ export const integrations = {
 } as const;
 
 export type IntegrationKey = keyof typeof integrations;
+
+/**
+ * Visibilidade das seções de navegação (briefing v3, seção 8): "páginas
+ * ainda sem dados reais não devem aparecer como telas vazias na versão
+ * apresentada ao cliente". `showBetaSections` (`SHOW_BETA_SECTIONS=true`)
+ * força tudo visível pra uso interno/QA.
+ */
+const showBetaSections = process.env.SHOW_BETA_SECTIONS === 'true';
+
+export const navVisibility = {
+  midiaPaga: showBetaSections || integrations.googleAds || integrations.metaAds,
+  seo: showBetaSections || integrations.ga4 || integrations.searchConsole,
+  ecommerce: showBetaSections || integrations.wakeCommerce || integrations.wakeCrm,
+  organico:
+    showBetaSections ||
+    integrations.windsorIgPerfumaria ||
+    integrations.windsorIgExclusivos ||
+    integrations.windsorTiktokPerfumaria ||
+    integrations.windsorTiktokExclusivos,
+} as const;

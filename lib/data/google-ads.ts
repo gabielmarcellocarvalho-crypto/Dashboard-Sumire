@@ -1,17 +1,10 @@
+import type { DateRange } from '@/lib/date-range';
 import type { DataResult, PaidCampaignRow, PaidMediaSummary } from './types';
 import { ok, notConfigured, errored } from './types';
 
 const API_VERSION = 'v24';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
-
-const DATE_PRESET_TO_GAQL: Record<string, string> = {
-  last_7d: 'LAST_7_DAYS',
-  last_30d: 'LAST_30_DAYS',
-  today: 'TODAY',
-  yesterday: 'YESTERDAY',
-  this_month: 'THIS_MONTH',
-  last_month: 'LAST_MONTH',
-};
+const MAX_PAGES = 50; // teto de segurança para o loop de nextPageToken
 
 interface GaqlCampaignRow {
   campaign?: { id?: string; name?: string; status?: string };
@@ -49,29 +42,39 @@ async function getAccessToken(): Promise<string> {
   return json.access_token;
 }
 
-async function runQuery(customerId: string, accessToken: string, gaql: string): Promise<GaqlCampaignRow[]> {
+/** Paginação via `nextPageToken` (briefing v3 seção 23.10) — `googleAds:search` retorna no máx. 10k linhas por página. */
+async function runQuery<T = GaqlCampaignRow>(customerId: string, accessToken: string, gaql: string): Promise<T[]> {
   const url = `https://googleads.googleapis.com/${API_VERSION}/customers/${customerId}/googleAds:search`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-      'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-      ...(process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID
-        ? { 'login-customer-id': process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID }
-        : {}),
-    },
-    body: JSON.stringify({ query: gaql }),
-    cache: 'no-store',
-  });
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${accessToken}`,
+    'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+    ...(process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID ? { 'login-customer-id': process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID } : {}),
+  };
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`Google Ads API retornou ${res.status}: ${body.slice(0, 500)}`);
+  const rows: T[] = [];
+  let pageToken: string | undefined;
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ query: gaql, pageToken }),
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`Google Ads API retornou ${res.status}: ${body.slice(0, 500)}`);
+    }
+
+    const json = (await res.json()) as { results?: T[]; nextPageToken?: string };
+    rows.push(...(json.results ?? []));
+    pageToken = json.nextPageToken;
+    if (!pageToken) break;
   }
 
-  const json = (await res.json()) as { results?: GaqlCampaignRow[] };
-  return json.results ?? [];
+  return rows;
 }
 
 function microsToUnits(v: string | undefined): number {
@@ -103,31 +106,37 @@ interface GaqlDailyRow {
   metrics?: { costMicros?: string; conversions?: number };
 }
 
-/** Investimento e conversões por dia — soma todas as campanhas por `segments.date`. */
-export async function getGoogleAdsDaily(datePreset = 'last_7d'): Promise<DataResult<DailyCost[]>> {
-  const customerId = process.env.GOOGLE_ADS_SUMIRE_PERFUMARIA_CUSTOMER_ID;
-  const hasCreds =
+function hasGoogleAdsCredentials(customerId: string | undefined): customerId is string {
+  return Boolean(
     process.env.GOOGLE_ADS_DEVELOPER_TOKEN &&
-    process.env.GOOGLE_ADS_CLIENT_ID &&
-    process.env.GOOGLE_ADS_CLIENT_SECRET &&
-    process.env.GOOGLE_ADS_REFRESH_TOKEN &&
-    customerId;
+      process.env.GOOGLE_ADS_CLIENT_ID &&
+      process.env.GOOGLE_ADS_CLIENT_SECRET &&
+      process.env.GOOGLE_ADS_REFRESH_TOKEN &&
+      customerId,
+  );
+}
 
-  if (!hasCreds) {
+/** GAQL não aceita hífen em datas — `DURING` presets trocados por `BETWEEN` com o DateRange explícito (briefing seção 22.1). */
+function dateRangeClause(range: DateRange): string {
+  return `segments.date BETWEEN '${range.startDate}' AND '${range.endDate}'`;
+}
+
+/** Investimento e conversões por dia — soma todas as campanhas por `segments.date`. */
+export async function getGoogleAdsDaily(range: DateRange): Promise<DataResult<DailyCost[]>> {
+  const customerId = process.env.GOOGLE_ADS_SUMIRE_PERFUMARIA_CUSTOMER_ID;
+  if (!hasGoogleAdsCredentials(customerId)) {
     return notConfigured('Credenciais do Google Ads incompletas em .env.local.');
   }
 
-  const gaqlRange = DATE_PRESET_TO_GAQL[datePreset] ?? 'LAST_7_DAYS';
-
   try {
     const accessToken = await getAccessToken();
-    const rows = (await runQuery(
-      customerId!,
+    const rows = await runQuery<GaqlDailyRow>(
+      customerId,
       accessToken,
       `SELECT segments.date, metrics.cost_micros, metrics.conversions
        FROM campaign
-       WHERE segments.date DURING ${gaqlRange}`,
-    )) as unknown as GaqlDailyRow[];
+       WHERE ${dateRangeClause(range)}`,
+    );
 
     const byDate = new Map<string, DailyCost>();
     for (const row of rows) {
@@ -145,36 +154,27 @@ export async function getGoogleAdsDaily(datePreset = 'last_7d'): Promise<DataRes
   }
 }
 
-export async function getGoogleAdsSummary(datePreset = 'last_7d'): Promise<DataResult<PaidMediaSummary>> {
+export async function getGoogleAdsSummary(range: DateRange): Promise<DataResult<PaidMediaSummary>> {
   const customerId = process.env.GOOGLE_ADS_SUMIRE_PERFUMARIA_CUSTOMER_ID;
-  const hasCreds =
-    process.env.GOOGLE_ADS_DEVELOPER_TOKEN &&
-    process.env.GOOGLE_ADS_CLIENT_ID &&
-    process.env.GOOGLE_ADS_CLIENT_SECRET &&
-    process.env.GOOGLE_ADS_REFRESH_TOKEN &&
-    customerId;
-
-  if (!hasCreds) {
+  if (!hasGoogleAdsCredentials(customerId)) {
     return notConfigured('Credenciais do Google Ads incompletas em .env.local (developer token, OAuth client ou customer ID).');
   }
 
-  const gaqlRange = DATE_PRESET_TO_GAQL[datePreset] ?? 'LAST_7_DAYS';
-
   try {
     const accessToken = await getAccessToken();
-    const rows = await runQuery(
-      customerId!,
+    const rows = await runQuery<GaqlCampaignRow>(
+      customerId,
       accessToken,
       `SELECT campaign.id, campaign.name, campaign.status, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value
        FROM campaign
-       WHERE segments.date DURING ${gaqlRange}`,
+       WHERE ${dateRangeClause(range)}`,
     );
 
     const campaigns = rows.map(toCampaignRow);
     const summary: PaidMediaSummary = {
       platform: 'Google Ads',
-      periodStart: '',
-      periodEnd: '',
+      periodStart: range.startDate,
+      periodEnd: range.endDate,
       cost: campaigns.reduce((a, c) => a + c.cost, 0),
       impressions: campaigns.reduce((a, c) => a + c.impressions, 0),
       clicks: campaigns.reduce((a, c) => a + c.clicks, 0),

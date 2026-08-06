@@ -32,6 +32,12 @@ export {
   Box as BoxIcon,
   Search as SearchIcon,
   Megaphone as MegaphoneIcon,
+  ChevronDown as ChevronDownIcon,
+  RefreshCw as RefreshIcon,
+  Flag as FlagIcon,
+  ShieldCheck as ShieldCheckIcon,
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
 } from 'lucide-react';
 
 type IconProps = { className?: string };

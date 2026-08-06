@@ -5,19 +5,19 @@ import { BarChart } from '@/components/charts/bar-chart';
 import { getInstagramSummary } from '@/lib/data/windsor';
 import { formatInt, formatDelta } from '@/lib/format';
 import { ACCOUNTS } from '@/lib/accounts';
+import { buildPreset } from '@/lib/date-range';
 
 export const dynamic = 'force-dynamic';
 
-function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-/** date_preset do Windsor não documenta "mês atual/anterior" — usamos date_from/date_to explícitos (formato confirmado na doc). */
-function monthRange(monthsAgo: number): { dateFrom: string; dateTo: string } {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
-  const end = monthsAgo === 0 ? now : new Date(now.getFullYear(), now.getMonth() - monthsAgo + 1, 0);
-  return { dateFrom: isoDate(start), dateTo: isoDate(end) };
+/**
+ * date_preset do Windsor não documenta "mês atual/anterior" — usamos
+ * date_from/date_to explícitos. Reaproveita `lib/date-range.ts` (calculado em
+ * America/Sao_Paulo, não `new Date()` do timezone do processo — briefing v3
+ * seção 23.12) em vez de repetir a lógica de mês localmente.
+ */
+function monthRange(monthsAgo: 0 | 1): { dateFrom: string; dateTo: string } {
+  const range = buildPreset(monthsAgo === 0 ? 'current_month' : 'previous_month', true);
+  return { dateFrom: range.startDate, dateTo: range.endDate };
 }
 
 export default async function ComparativoPage() {

@@ -3,6 +3,7 @@ import { Poppins, DM_Sans } from 'next/font/google';
 import './globals.css';
 import { AppShell } from '@/components/layout/app-shell';
 import { cn } from '@/lib/utils';
+import { navVisibility } from '@/lib/env';
 
 const poppins = Poppins({
   variable: '--font-poppins',
@@ -25,7 +26,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="pt-BR" className={cn(poppins.variable, dmSans.variable, 'font-sans')}>
       <body>
-        <AppShell>{children}</AppShell>
+        <AppShell navVisibility={navVisibility}>{children}</AppShell>
       </body>
     </html>
   );
