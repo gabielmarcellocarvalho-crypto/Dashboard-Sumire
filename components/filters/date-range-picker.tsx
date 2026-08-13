@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { CalendarIcon, ChevronDownIcon } from '@/components/icons';
 import {
@@ -36,12 +37,19 @@ const COMPARISON_ORDER: ComparisonMode[] = [
   'none',
 ];
 
+interface PanelPosition {
+  top: number;
+  right: number;
+}
+
 export function DateRangePicker() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const [panelPos, setPanelPos] = useState<PanelPosition | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const current = useMemo(
     () =>
@@ -70,16 +78,36 @@ export function DateRangePicker() {
     setDraftTo(current.range.endDate);
     setDraftCompare(current.comparisonMode);
     setDraftIncludeToday(current.range.includeToday);
+
+    // Painel renderizado via portal em document.body, posicionado por
+    // coordenadas fixas — o topbar tem seu próprio stacking context
+    // (position: sticky + z-index) que fica ABAIXO do da sidebar (z-index
+    // maior), então nenhum z-index dentro do topbar conseguiria fazer o
+    // painel aparecer por cima da sidebar. Escapar via portal resolve isso.
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (rect) {
+      setPanelPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+    }
     setOpen(true);
   }
 
   useEffect(() => {
     if (!open) return;
     function onClickOutside(event: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (buttonRef.current?.contains(target)) return;
+      if (panelRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false);
     }
     document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+      document.removeEventListener('keydown', onKeyDown);
+    };
   }, [open]);
 
   const previewRange = useMemo(() => {
@@ -114,8 +142,9 @@ export function DateRangePicker() {
   }
 
   return (
-    <div className="date-range-picker" ref={rootRef}>
+    <div className="date-range-picker">
       <button
+        ref={buttonRef}
         type="button"
         className="filter primary"
         onClick={() => (open ? setOpen(false) : openPanel())}
@@ -128,67 +157,76 @@ export function DateRangePicker() {
         <ChevronDownIcon className={open ? 'drp-chevron open' : 'drp-chevron'} />
       </button>
 
-      {open && (
-        <div className="date-range-panel" role="dialog" aria-label="Filtro de período">
-          <div className="drp-section">
-            <span className="drp-label">Período</span>
-            <div className="drp-presets">
-              {PRESET_ORDER.map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  className={`drp-chip${draftPreset === preset ? ' active' : ''}`}
-                  onClick={() => setDraftPreset(preset)}
-                >
-                  {DATE_PRESET_LABEL[preset]}
-                </button>
-              ))}
+      {open &&
+        panelPos &&
+        createPortal(
+          <div
+            ref={panelRef}
+            className="date-range-panel"
+            role="dialog"
+            aria-label="Filtro de período"
+            style={{ top: panelPos.top, right: panelPos.right }}
+          >
+            <div className="drp-section">
+              <span className="drp-label">Período</span>
+              <div className="drp-presets">
+                {PRESET_ORDER.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    className={`drp-chip${draftPreset === preset ? ' active' : ''}`}
+                    onClick={() => setDraftPreset(preset)}
+                  >
+                    {DATE_PRESET_LABEL[preset]}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {draftPreset === 'custom' && (
-            <div className="drp-section drp-custom">
-              <label>
-                <span className="drp-label">De</span>
-                <input type="date" value={draftFrom} max={draftTo} onChange={(e) => setDraftFrom(e.target.value)} />
-              </label>
-              <label>
-                <span className="drp-label">Até</span>
-                <input type="date" value={draftTo} min={draftFrom} onChange={(e) => setDraftTo(e.target.value)} />
-              </label>
+            {draftPreset === 'custom' && (
+              <div className="drp-section drp-custom">
+                <label>
+                  <span className="drp-label">De</span>
+                  <input type="date" value={draftFrom} max={draftTo} onChange={(e) => setDraftFrom(e.target.value)} />
+                </label>
+                <label>
+                  <span className="drp-label">Até</span>
+                  <input type="date" value={draftTo} min={draftFrom} onChange={(e) => setDraftTo(e.target.value)} />
+                </label>
+              </div>
+            )}
+
+            <div className="drp-section">
+              <span className="drp-label">Comparar com</span>
+              <select value={draftCompare} onChange={(e) => setDraftCompare(e.target.value as ComparisonMode)}>
+                {COMPARISON_ORDER.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {COMPARISON_MODE_LABEL[mode]}
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
 
-          <div className="drp-section">
-            <span className="drp-label">Comparar com</span>
-            <select value={draftCompare} onChange={(e) => setDraftCompare(e.target.value as ComparisonMode)}>
-              {COMPARISON_ORDER.map((mode) => (
-                <option key={mode} value={mode}>
-                  {COMPARISON_MODE_LABEL[mode]}
-                </option>
-              ))}
-            </select>
-          </div>
+            <label className="drp-toggle">
+              <input
+                type="checkbox"
+                checked={draftIncludeToday}
+                onChange={(e) => setDraftIncludeToday(e.target.checked)}
+              />
+              <span>Incluir hoje</span>
+            </label>
 
-          <label className="drp-toggle">
-            <input
-              type="checkbox"
-              checked={draftIncludeToday}
-              onChange={(e) => setDraftIncludeToday(e.target.checked)}
-            />
-            <span>Incluir hoje</span>
-          </label>
-
-          <div className="drp-footer">
-            <span className="drp-hint">
-              {previewComparison ? `Comparando com ${formatRangeLabel(previewComparison)}` : 'Sem comparação'}
-            </span>
-            <button type="button" className="drp-apply" onClick={apply}>
-              Aplicar
-            </button>
-          </div>
-        </div>
-      )}
+            <div className="drp-footer">
+              <span className="drp-hint">
+                {previewComparison ? `Comparando com ${formatRangeLabel(previewComparison)}` : 'Sem comparação'}
+              </span>
+              <button type="button" className="drp-apply" onClick={apply}>
+                Aplicar
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

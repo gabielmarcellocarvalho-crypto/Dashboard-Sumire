@@ -487,19 +487,36 @@ button {
   transform: rotate(180deg);
 }
 .date-range-panel {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
-  z-index: 40;
-  width: 320px;
+  /* Renderizado via portal em document.body (top/right vêm de style inline,
+     calculados a partir do botão) — precisa ser `fixed`, não `absolute`,
+     e um z-index acima de tudo (sidebar=50, backdrop=45) já que escapou do
+     stacking context do topbar (ver comentário em date-range-picker.tsx). */
+  position: fixed;
+  z-index: 200;
+  width: min(340px, calc(100vw - 24px));
+  max-height: calc(100vh - 88px);
+  overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--line-2);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
-  padding: 14px;
+  border-radius: 14px;
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.3);
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+  animation: drp-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes drp-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 .drp-section {
   display: flex;

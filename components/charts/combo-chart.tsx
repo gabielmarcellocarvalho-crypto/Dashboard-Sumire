@@ -31,8 +31,13 @@ export interface ComboLineSeries {
   values: (number | null)[];
   /** Eixo Y separado (ex.: MER numa escala bem diferente de R$) — briefing v3 seção 9.5/20.4. */
   axis: 'primary' | 'secondary';
-  /** Formatação do tooltip/eixo — moeda (padrão) ou número decimal simples (ex.: MER "3,4x"). */
-  valueFormat?: (v: number) => string;
+  /**
+   * Formatação do tooltip — moeda (padrão) ou "multiplier" (ex.: MER "3,4x").
+   * String, não função: este componente é Client e recebe `series` de um
+   * Server Component (app/page.tsx) — funções não podem atravessar essa
+   * fronteira (RSC só serializa dados, não closures).
+   */
+  format?: 'multiplier';
 }
 
 type ComboSeries = ComboBarSeries | ComboLineSeries;
@@ -55,6 +60,7 @@ export function ComboChart({
   currencyFormat?: (v: number) => string;
 }) {
   const hasSecondary = series.some((s) => s.type === 'line' && s.axis === 'secondary');
+  const multiplierFormat = (v: number) => `${v.toFixed(2)}x`;
 
   return (
     <div style={{ height }}>
@@ -109,7 +115,7 @@ export function ComboChart({
                   const s = series[ctx.datasetIndex];
                   const raw = ctx.parsed.y;
                   if (raw === null || raw === undefined) return `${s.label}: —`;
-                  const format = s.type === 'line' && s.valueFormat ? s.valueFormat : currencyFormat;
+                  const format = s.type === 'line' && s.format === 'multiplier' ? multiplierFormat : currencyFormat;
                   return `${s.label}: ${format(raw)}`;
                 },
               },

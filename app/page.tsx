@@ -128,7 +128,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pag
       color: '#D9A53A',
       values: merSeries,
       axis: 'secondary',
-      valueFormat: (v) => `${v.toFixed(2)}x`,
+      format: 'multiplier',
     },
   ];
 
