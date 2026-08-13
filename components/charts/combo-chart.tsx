@@ -5,14 +5,16 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
+  BarController,
   LineElement,
+  LineController,
   PointElement,
   Tooltip,
   Legend,
 } from 'chart.js';
 import { Chart } from 'react-chartjs-2';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, BarController, LineElement, LineController, PointElement, Tooltip, Legend);
 
 const GRID_COLOR = 'rgba(255,255,255,0.07)';
 const TEXT_MUTED = '#847d95';
