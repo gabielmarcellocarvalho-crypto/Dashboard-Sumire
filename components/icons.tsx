@@ -33,6 +33,8 @@ export {
   Search as SearchIcon,
   Megaphone as MegaphoneIcon,
   ChevronDown as ChevronDownIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
   RefreshCw as RefreshIcon,
   Flag as FlagIcon,
   ShieldCheck as ShieldCheckIcon,
